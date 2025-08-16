@@ -1,0 +1,63 @@
+# .lefthook.yml
+commit-msg:
+  commands:
+    validate-commit-message:
+      run: |
+        #!/usr/bin/env sh
+        commit_msg=$(cat {1})
+        regex="AB#[0-9]+"
+        if echo "$commit_msg" | grep -Eq "$regex"; then
+          echo "✅ Mensaje de commit validado correctamente: se encontró 'AB#codigo'."
+          exit 0
+        else
+          echo "---------------------------------------------------------"
+          echo "❌ ERROR: El mensaje de tu commit DEBE contener 'AB#codigo' en alguna parte."
+          echo ""
+          echo "           Ejemplos VÁLIDOS:"
+          echo "           - 'Mi nuevo feature AB#12345'"
+          echo "           - 'AB#987 Ajuste de estilo'"
+          echo "           - 'Arreglo menor, ticket AB#654'"
+          echo ""
+          echo "           Ejemplos INVÁLIDOS:"
+          echo "           - 'Mi commit sin código'"
+          echo "           - 'AB#BUG-456' (contiene letras después de AB#)"
+          echo "---------------------------------------------------------"
+          exit 1
+        fi
+
+pre-push:
+  commands:
+    validate-branch-name:
+      apply: all
+      run: |
+        #!/usr/bin/env sh
+        # Updated regex to include AB#<digits> after the prefix
+        branch_regex="^(feature|fix|hotfix|test)\/[a-zA-Z0-9_-]*AB#[0-9]+[a-zA-Z0-9_-]*$"
+        current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+        if [ "$current_branch" = "main" ] || [ "$current_branch" = "master" ] || [ "$current_branch" = "staging" ] || [ "$current_branch" = "develop" ]; then
+          echo "ℹ️ Saltando la validación del nombre de la rama para la rama principal: '$current_branch'."
+          exit 0
+        fi
+
+        if ! echo "$current_branch" | grep -Eq "$branch_regex"; then
+          echo "---------------------------------------------------------"
+          echo "❌ ERROR: El nombre de tu rama no sigue las convenciones requeridas."
+          echo ""
+          echo "           El nombre de la rama debe comenzar con uno de los prefijos permitidos,"
+          echo "           seguido por el código de Azure DevOps (AB#codigo) y una descripción."
+          echo ""
+          echo "           Prefijos permitidos:"
+          echo "           - feature/"
+          echo "           - fix/"
+          echo "           - hotfix/"
+          echo "           - test/"
+          echo ""
+          echo "           Ejemplos VÁLIDOS:"
+          echo "           - feature/AB#12345-agregar-soporte-dark-mode"
+          echo "           - fix/HU-AB#987-arreglo-botones-modal"
+          echo "           - hotfix/AB#654-critico-error-api"
+          echo "---------------------------------------------------------"
+          exit 1
+        fi
+        echo "✅ Nombre de rama validado correctamente para el push."
